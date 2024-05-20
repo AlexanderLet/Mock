@@ -1,1 +1,94 @@
+//При перезапуске сервера, добавленые пользователи удаляются. Остаются те что в коде. 
 
+package com.example.maven;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+class User {
+    public int id;
+    public String username;
+
+    public User(int id, String username) {
+        this.id = id;
+        this.username = username;
+    }
+}
+
+@SpringBootApplication
+@RestController
+public class MavenApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(MavenApplication.class, args);
+    }
+    //Оповещение о заглушке. 
+    //Пример запроса http://localhost:8080/mock
+    @GetMapping("/mock")
+    public String mock(@RequestParam(value = "name", defaultValue = "guys") String name) {
+        return String.format("Hello %s", name + "! This mock.");
+    }
+
+    @RestController
+    public class UsersController {
+        private List<User> users = new ArrayList<>();
+        private AtomicInteger idCounter = new AtomicInteger();
+        
+        //Изначальный список с пользователями
+        public UsersController() {
+            users.add(new User(idCounter.incrementAndGet(), "John"));
+            users.add(new User(idCounter.incrementAndGet(), "Mary"));
+            users.add(new User(idCounter.incrementAndGet(), "Jane"));
+        }
+        //Получение списка пользователей (Get)
+        //Пример запроса http://localhost:8080/users
+        @GetMapping("/users")
+        public List<User> getUsers() {
+            return users;
+        }
+
+
+        //Получение пользователя по ID
+        // Пример запроса http://localhost:8080/users/search?id=2
+        @GetMapping("/users/search")
+        public String getUsersSearch(@RequestParam(value = "id", required = false) Integer id) {
+            if (id != null) {
+                User user = users.get(id);
+                return user != null ? user.username : "User not found";
+            } else {
+                return users.toString();
+            }
+        }
+
+
+        //Метод Delete ничего не удаляет, возвращает {"result": "success"}
+        @DeleteMapping("/users")
+        public Map<String, String> deleteUser() {
+        return Collections.singletonMap("result", "success");
+        }
+
+        //Добавление пользователя (POST)
+        //Пример запроса http://localhost:8080/users
+        //{"username": "Alex"}
+
+        @PostMapping("/users")
+        public Map<String, String> addUser(@RequestBody Map<String, String> userMap) {
+            String username = userMap.get("username");
+            if (username != null) {
+                int newId = idCounter.incrementAndGet();
+                User user = new User(newId, username);
+                users.add(user);
+                return Collections.singletonMap("result", "success");
+            } else {
+                return Collections.singletonMap("result", "failed");
+            }
+        }
+    }
+}
